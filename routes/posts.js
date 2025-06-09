@@ -242,6 +242,11 @@ router.delete("/:id/comments/:commentId", async (req, res) => {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    const comment = post.comments.find((c) => c._id === req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
     post.comments = post.comments.filter((c) => c._id !== req.params.commentId);
     await post.save();
 
