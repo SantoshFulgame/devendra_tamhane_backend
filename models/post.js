@@ -1,31 +1,72 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose")
 
-const PostSchema = new mongoose.Schema({
-  title: {
+const commentSchema = new mongoose.Schema({
+  _id: {
     type: String,
     required: true,
   },
-  description: {
+  name: {
     type: String,
     required: true,
+    trim: true,
   },
-  images: [{
+  email: {
     type: String,
     required: true,
-  }],
-  date: {
+    trim: true,
+    lowercase: true,
+  },
+  content: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  likes: {
+    type: Number,
+    default: 0,
+  },
+  createdAt: {
     type: Date,
-    required: true,
+    default: Date.now,
   },
-  category: {
-    type: String,
-    required: true,
-  },
-  isStored: {
-    type: Boolean,
-    default: false,
-  },
-}, { timestamps: true });
+})
 
-module.exports = mongoose.model('Post', PostSchema);
+const postSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    images: [
+      {
+        type: String,
+        required: true,
+      },
+    ],
+    date: {
+      type: Date,
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    isStored: {
+      type: Boolean,
+      default: false,
+    },
+    comments: [commentSchema],
+  },
+  {
+    timestamps: true,
+  },
+)
 
+module.exports = mongoose.model("Post", postSchema)
