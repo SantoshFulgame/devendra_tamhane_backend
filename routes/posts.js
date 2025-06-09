@@ -2,6 +2,20 @@ const express = require('express');
 const router = express.Router();
 const Post = require('../models/post');
 
+
+// Admin credentials (in production, store these in environment variables)
+const ADMIN_EMAIL = 'admin@gmail.com';
+const ADMIN_PASSWORD = 'admin@2025';
+
+// Middleware to check admin credentials
+const isAdmin = (req, res, next) => {
+  const { adminEmail, adminPassword } = req.body;
+  if (adminEmail !== ADMIN_EMAIL || adminPassword !== ADMIN_PASSWORD) {
+    return res.status(403).json({ message: 'Unauthorized: Invalid admin credentials' });
+  }
+  next();
+};
+
 // Get all posts
 router.get('/', async (req, res) => {
   try {
@@ -94,7 +108,6 @@ router.patch('/:id/toggle-stored', async (req, res) => {
 });
 
 
-
 // Get comments for a post
 router.get("/:id/comments", async (req, res) => {
   try {
@@ -129,6 +142,7 @@ router.post("/:id/comments", async (req, res) => {
       content,
       createdAt: new Date().toISOString(),
       likes: 0,
+      likedBy: [],
       replies: []
     };
 
@@ -145,8 +159,8 @@ router.post("/:id/comments", async (req, res) => {
   }
 });
 
-// Add a reply to a comment
-router.post("/:id/comments/:commentId/replies", async (req, res) => {
+// Add a reply to a comment (admin only)
+router.post("/:id/comments/:commentId/replies", isAdmin, async (req, res) => {
   try {
     const { name, email, content } = req.body;
     if (!name || !email || !content) {
@@ -169,7 +183,8 @@ router.post("/:id/comments/:commentId/replies", async (req, res) => {
       email,
       content,
       createdAt: new Date().toISOString(),
-      likes: 0
+      likes: 0,
+      likedBy: []
     };
 
     if (!comment.replies) {
@@ -188,6 +203,11 @@ router.post("/:id/comments/:commentId/replies", async (req, res) => {
 // Like a comment
 router.post("/:id/comments/:commentId/like", async (req, res) => {
   try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required to like a comment" });
+    }
+
     const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -198,7 +218,12 @@ router.post("/:id/comments/:commentId/like", async (req, res) => {
       return res.status(404).json({ message: "Comment not found" });
     }
 
+    if (comment.likedBy.includes(email)) {
+      return res.status(400).json({ message: "You have already liked this comment" });
+    }
+
     comment.likes = (comment.likes || 0) + 1;
+    comment.likedBy.push(email);
     await post.save();
 
     res.status(200).json(comment);
@@ -210,6 +235,11 @@ router.post("/:id/comments/:commentId/like", async (req, res) => {
 // Like a reply
 router.post("/:id/comments/:commentId/replies/:replyId/like", async (req, res) => {
   try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required to like a reply" });
+    }
+
     const post = await Post.findById(req.params.id);
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -225,7 +255,12 @@ router.post("/:id/comments/:commentId/replies/:replyId/like", async (req, res) =
       return res.status(404).json({ message: "Reply not found" });
     }
 
+    if (reply.likedBy.includes(email)) {
+      return res.status(400).json({ message: "You have already liked this reply" });
+    }
+
     reply.likes = (reply.likes || 0) + 1;
+    reply.likedBy.push(email);
     await post.save();
 
     res.status(200).json(reply);
@@ -234,8 +269,8 @@ router.post("/:id/comments/:commentId/replies/:replyId/like", async (req, res) =
   }
 });
 
-// Delete a comment
-router.delete("/:id/comments/:commentId", async (req, res) => {
+// Delete a comment (admin only)
+router.delete("/:id/comments/:commentId", isAdmin, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) {
@@ -256,8 +291,8 @@ router.delete("/:id/comments/:commentId", async (req, res) => {
   }
 });
 
-// Delete a reply
-router.delete("/:id/comments/:commentId/replies/:replyId", async (req, res) => {
+// Delete a reply (admin only)
+router.delete("/:id/comments/:commentId/replies/:replyId", isAdmin, async (req, res) => {
   try {
     const post = await Post.findById(req.params.id);
     if (!post) {
